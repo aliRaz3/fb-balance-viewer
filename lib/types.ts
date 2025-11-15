@@ -5,6 +5,8 @@ export interface AdAccount {
   balance: number
   account_status: number
   timezone_name: string
+  amount_spent: number
+  spend_cap?: number
 }
 
 export interface MetaApiResponse {
@@ -15,6 +17,7 @@ export interface MetaApiResponse {
       after: string
     }
     next?: string
+    previous?: string
   }
 }
 

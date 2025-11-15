@@ -1,4 +1,4 @@
-import { AdAccount } from './types'
+import { AdAccount, MetaApiResponse } from './types'
 
 const META_API_VERSION = 'v24.0'
 const META_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`
@@ -25,24 +25,32 @@ export class MetaApiClient {
     }
   }
 
-  async getAdAccounts(): Promise<{ data: AdAccount[]; error?: string }> {
+  async getAdAccounts(customUrl?: string): Promise<{ data: MetaApiResponse; error?: string }> {
     try {
-      const fields = 'name,currency,balance,account_status,timezone_name'
-      const url = `${META_BASE_URL}/me/adaccounts?fields=${fields}&access_token=${this.accessToken}`
+      let url: string
+      
+      if (customUrl) {
+        // Use the provided pagination URL directly
+        url = customUrl
+      } else {
+        // Build the initial URL
+        const fields = 'name,currency,balance,account_status,timezone_name,amount_spent,spend_cap'
+        url = `${META_BASE_URL}/me/adaccounts?fields=${fields}&access_token=${this.accessToken}`
+      }
       
       const response = await fetch(url)
       
       if (!response.ok) {
         if (response.status === 401) {
-          return { data: [], error: 'Token expired or invalid' }
+          return { data: { data: [] }, error: 'Token expired or invalid' }
         }
-        return { data: [], error: `API Error: ${response.status}` }
+        return { data: { data: [] }, error: `API Error: ${response.status}` }
       }
 
       const result = await response.json()
-      return { data: result.data || [] }
+      return { data: result }
     } catch (error) {
-      return { data: [], error: 'Failed to fetch ad accounts' }
+      return { data: { data: [] }, error: 'Failed to fetch ad accounts' }
     }
   }
 

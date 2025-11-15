@@ -9,9 +9,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Token required' }, { status: 401 })
     }
 
+    // Get pagination URL from query parameters
+    const { searchParams } = new URL(request.url)
+    const paginationUrl = searchParams.get('url')
+
     // Use MetaApiClient to fetch ad accounts
     const metaClient = new MetaApiClient(token)
-    const result = await metaClient.getAdAccounts()
+    const result = await metaClient.getAdAccounts(paginationUrl || undefined)
     
     if (result.error) {
       if (result.error.includes('Token expired') || result.error.includes('invalid')) {
@@ -24,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Fetched ad accounts:', result.data)
-    return NextResponse.json({ data: result.data })
+    return NextResponse.json(result.data)
 
   } catch (error) {
     console.error('Error fetching ad accounts:', error)

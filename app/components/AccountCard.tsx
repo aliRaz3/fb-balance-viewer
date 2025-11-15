@@ -11,6 +11,10 @@ export default function AccountCard({ account }: AccountCardProps) {
     return MetaApiClient.formatBalance(amount, currency)
   }
 
+  const trimAccountId = (id: string): string => {
+    return id.startsWith('act_') ? id.substring(4) : id
+  }
+
   const getAccountStatusInfo = (status: number): { text: string; color: string; bgColor: string } => {
     return MetaApiClient.getAccountStatusText(status)
   }
@@ -29,7 +33,7 @@ export default function AccountCard({ account }: AccountCardProps) {
       <div className="space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">Account ID</span>
-          <span className="text-sm font-mono text-gray-800">{account.id}</span>
+          <span className="text-sm font-mono text-gray-800">{trimAccountId(account.id)}</span>
         </div>
         
         <div className="flex justify-between items-center">
@@ -43,6 +47,22 @@ export default function AccountCard({ account }: AccountCardProps) {
             {formatBalance(account.balance, account.currency)}
           </span>
         </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">Amount Spent</span>
+          <span className="text-sm font-medium text-red-600">
+            {formatBalance(account.amount_spent, account.currency)}
+          </span>
+        </div>
+        
+        {account.spend_cap !== undefined && (
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Spending Limit</span>
+            <span className="text-sm font-medium text-blue-600">
+              {formatBalance(account.spend_cap, account.currency)}
+            </span>
+          </div>
+        )}
         
         {account.timezone_name && (
           <div className="flex justify-between items-center">

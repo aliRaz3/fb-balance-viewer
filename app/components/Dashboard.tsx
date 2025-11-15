@@ -14,10 +14,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [nextUrl, setNextUrl] = useState<string | null>(null)
+  const [previousUrl, setPreviousUrl] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = async (url?: string, pageDirection?: 'next' | 'previous' | 'initial') => {
     try {
-      const response = await fetch('/api/accounts', {
+      let apiUrl = '/api/accounts'
+      
+      if (url) {
+        apiUrl += `?url=${encodeURIComponent(url)}`
+      }
+      
+      const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -33,6 +42,18 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
 
       const data = await response.json()
       setAccounts(data.data || [])
+      setNextUrl(data.paging?.next || null)
+      setPreviousUrl(data.paging?.previous || null)
+      
+      // Update page number based on direction
+      if (pageDirection === 'next') {
+        setCurrentPage(prev => prev + 1)
+      } else if (pageDirection === 'previous') {
+        setCurrentPage(prev => Math.max(prev - 1, 1))
+      } else if (pageDirection === 'initial') {
+        setCurrentPage(1)
+      }
+      
       setError('')
     } catch (err) {
       setError('Failed to fetch ad accounts. Please check your connection and try again.')
@@ -42,14 +63,30 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchAccounts()
+    await fetchAccounts(undefined, 'initial')
     setRefreshing(false)
+  }
+
+  const handleNextPage = async () => {
+    if (nextUrl) {
+      setLoading(true)
+      await fetchAccounts(nextUrl, 'next')
+      setLoading(false)
+    }
+  }
+
+  const handlePreviousPage = async () => {
+    if (previousUrl) {
+      setLoading(true)
+      await fetchAccounts(previousUrl, 'previous')
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     const loadAccounts = async () => {
       setLoading(true)
-      await fetchAccounts()
+      await fetchAccounts(undefined, 'initial')
       setLoading(false)
     }
     loadAccounts()
@@ -68,7 +105,11 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Meta Ad Accounts Dashboard</h1>
               <p className="text-gray-600">
-                {accounts.length > 0 ? `${accounts.length} account${accounts.length > 1 ? 's' : ''} found` : 'No accounts found'}
+                {accounts.length > 0 ? (
+                  <>
+                    {accounts.length} account{accounts.length > 1 ? 's' : ''} on page {currentPage}
+                  </>
+                ) : 'No accounts found'}
               </p>
             </div>
             <div className="flex space-x-4">
@@ -117,13 +158,55 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
 
         {/* Accounts Grid */}
         {accounts.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {accounts.map((account) => {
-              return (
-                <AccountCard key={account.id} account={account} />
-              )
-            })}
-          </div>
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {accounts.map((account) => {
+                return (
+                  <AccountCard key={account.id} account={account} />
+                )
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            {(nextUrl || previousUrl) && (
+              <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 p-6 mt-8">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} • {accounts.length} accounts shown
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={!previousUrl || loading}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span>Previous</span>
+                    </button>
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        Page {currentPage}
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={handleNextPage}
+                      disabled={!nextUrl || loading}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                    >
+                      <span>Next</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         ) : !error && (
           <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 p-12 text-center">
             <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
