@@ -6,23 +6,29 @@ import { tokenStorage } from '../lib/tokenStorage'
 
 export default function Home() {
   const [token, setToken] = useState<string | null>(null)
+  const [businessAccountId, setBusinessAccountId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing token on mount
-    const existingToken = tokenStorage.get()
-    setToken(existingToken)
+    // Check for existing credentials on mount
+    const existingCredentials = tokenStorage.get()
+    if (existingCredentials) {
+      setToken(existingCredentials.token)
+      setBusinessAccountId(existingCredentials.businessAccountId)
+    }
     setIsLoading(false)
   }, [])
 
-  const handleTokenSubmit = (newToken: string) => {
-    tokenStorage.save(newToken)
+  const handleTokenSubmit = (newToken: string, newBusinessAccountId: string) => {
+    tokenStorage.save(newToken, newBusinessAccountId)
     setToken(newToken)
+    setBusinessAccountId(newBusinessAccountId)
   }
 
   const handleLogout = () => {
     tokenStorage.remove()
     setToken(null)
+    setBusinessAccountId(null)
   }
 
   if (isLoading) {
@@ -35,8 +41,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {token ? (
-        <Dashboard token={token} onLogout={handleLogout} />
+      {token && businessAccountId ? (
+        <Dashboard token={token} businessAccountId={businessAccountId} onLogout={handleLogout} />
       ) : (
         <TokenInput onTokenSubmit={handleTokenSubmit} />
       )}

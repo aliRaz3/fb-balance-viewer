@@ -3,7 +3,7 @@ import { MetaApiClient } from '../../../lib/metaApi'
 
 export async function POST(request: NextRequest) {
   try {
-    const { token } = await request.json()
+    const { token, businessAccountId } = await request.json()
 
     if (!token) {
       return NextResponse.json(
@@ -12,8 +12,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!businessAccountId) {
+      return NextResponse.json(
+        { message: 'Business Account ID is required' },
+        { status: 400 }
+      )
+    }
+
     // Use MetaApiClient for token validation
-    const metaClient = new MetaApiClient(token)
+    const metaClient = new MetaApiClient(token, businessAccountId)
     const result = await metaClient.validateToken()
     
     if (!result.valid) {
@@ -26,13 +33,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ 
-      valid: true, 
-      user: { 
-        id: result.user.id, 
-        name: result.user.name 
+    const response: any = { 
+      valid: true
+    }
+
+    // Add user info if available
+    if (result.user) {
+      response.user = {
+        id: result.user.user_id || result.user.id,
+        name: result.user.name || 'System User'
       }
-    })
+    }
+
+    // Add business info if available
+    if (result.business) {
+      response.business = {
+        id: result.business.id,
+        name: result.business.name
+      }
+    }
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Token validation error:', error)

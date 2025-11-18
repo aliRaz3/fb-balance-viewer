@@ -2,11 +2,12 @@
 import { useState } from 'react'
 
 interface TokenInputProps {
-  onTokenSubmit: (token: string) => void
+  onTokenSubmit: (token: string, businessAccountId: string) => void
 }
 
 export default function TokenInput({ onTokenSubmit }: TokenInputProps) {
   const [token, setToken] = useState('')
+  const [businessAccountId, setBusinessAccountId] = useState('')
   const [isValidating, setIsValidating] = useState(false)
   const [error, setError] = useState('')
 
@@ -16,16 +17,25 @@ export default function TokenInput({ onTokenSubmit }: TokenInputProps) {
     setError('')
 
     try {
+      if (!businessAccountId.trim()) {
+        setError('Business Manager ID is required')
+        setIsValidating(false)
+        return
+      }
+
       const response = await fetch('/api/validate-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.trim() })
+        body: JSON.stringify({ 
+          token: token.trim(),
+          businessAccountId: businessAccountId.trim()
+        })
       })
 
       const result = await response.json()
 
       if (response.ok && result.valid) {
-        onTokenSubmit(token.trim())
+        onTokenSubmit(token.trim(), businessAccountId.trim())
       } else {
         setError(result.message || 'Invalid token')
       }
@@ -46,21 +56,38 @@ export default function TokenInput({ onTokenSubmit }: TokenInputProps) {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Meta Ad Account Viewer</h1>
-          <p className="text-gray-600">Enter your Meta access token to view your ad accounts</p>
+          <p className="text-gray-600">Enter your Meta system access token to view your business ad accounts</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Access Token
+              System Access Token *
             </label>
             <textarea
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your Meta access token here..."
+              placeholder="Paste your Meta system access token here..."
               className="w-full p-4 border border-gray-200 rounded-xl resize-none h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Business Manager ID *
+            </label>
+            <input
+              type="text"
+              value={businessAccountId}
+              onChange={(e) => setBusinessAccountId(e.target.value)}
+              placeholder="e.g., 123456789012345"
+              className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              required
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Required: Your Business Manager ID from Business Settings → Business Info.
+            </p>
           </div>
 
           {error && (
@@ -74,7 +101,7 @@ export default function TokenInput({ onTokenSubmit }: TokenInputProps) {
 
           <button
             type="submit"
-            disabled={!token.trim() || isValidating}
+            disabled={!token.trim() || !businessAccountId.trim() || isValidating}
             className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-6 rounded-xl font-medium hover:from-blue-600 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
           >
             {isValidating ? (
@@ -96,11 +123,11 @@ export default function TokenInput({ onTokenSubmit }: TokenInputProps) {
             <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            How to get your token:
+            How to get your system token:
           </h3>
           <div className="space-y-4">
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Create a Meta App (skip if already have)</h4>
+              <h4 className="font-medium text-gray-700 mb-2">Create a Meta App & Business Integration</h4>
             </div>
           </div>
           
@@ -117,32 +144,40 @@ export default function TokenInput({ onTokenSubmit }: TokenInputProps) {
               <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">3</span>
               Add the "Marketing API" product to your app
             </li>
+            <li className="flex items-start">
+              <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">4</span>
+              Go to <a href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Meta Business Manager</a>
+            </li>
+            <li className="flex items-start">
+              <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">5</span>
+              Navigate to Business Settings → Apps → Add your created app
+            </li>
           </ol>
           
           <div className="mt-6">
-            <h4 className="font-medium text-gray-700 mb-2">Generate Access Token</h4>
+            <h4 className="font-medium text-gray-700 mb-2">Generate System User Token</h4>
           </div>
           
           <ol className="text-sm text-gray-600 space-y-2 mt-4">
             <li className="flex items-start">
               <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">1</span>
-              Go to <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Graph API Explorer</a>
+              In Business Settings → Users → System Users → Add
             </li>
             <li className="flex items-start">
               <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">2</span>
-              Select your app from the "Meta App" dropdown
+              Create system user with "Admin" role
             </li>
             <li className="flex items-start">
               <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">3</span>
-              Select user token from "User or Page" dropdown
+              Assign ad accounts to the system user
             </li>
             <li className="flex items-start">
               <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">4</span>
-              Add permissions: ads_read, ads_management
+              Generate token → Select your app → Add permissions: ads_read, ads_management, business_management
             </li>
             <li className="flex items-start">
               <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-3 mt-0.5">5</span>
-              Click "Generate Access Token" and copy the token
+              Set token to "Never Expire" and copy the generated token
             </li>
           </ol>
         </div>

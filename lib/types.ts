@@ -27,5 +27,9 @@ export interface TokenValidationResponse {
     id: string
     name: string
   }
+  business?: {
+    id: string
+    name: string
+  }
   message?: string
 }

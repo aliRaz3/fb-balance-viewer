@@ -5,21 +5,46 @@ const META_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`
 
 export class MetaApiClient {
   private accessToken: string
+  private businessAccountId: string
 
-  constructor(accessToken: string) {
+  constructor(accessToken: string, businessAccountId: string) {
     this.accessToken = accessToken
+    this.businessAccountId = businessAccountId
   }
 
-  async validateToken(): Promise<{ valid: boolean; user?: any; error?: string }> {
+  async validateToken(): Promise<{ valid: boolean; user?: any; business?: any; error?: string }> {
     try {
-      const response = await fetch(`${META_BASE_URL}/me?access_token=${this.accessToken}`)
+      // First, try to validate the token by checking permissions
+      const debugResponse = await fetch(`${META_BASE_URL}/debug_token?input_token=${this.accessToken}&access_token=${this.accessToken}`)
       
-      if (!response.ok) {
+      if (!debugResponse.ok) {
         return { valid: false, error: 'Invalid or expired token' }
       }
 
-      const user = await response.json()
-      return { valid: true, user }
+      const debugResult = await debugResponse.json()
+      console.log('Debug Token Result:', debugResult)
+      
+      if (!debugResult.data?.is_valid) {
+        return { valid: false, error: 'Token is not valid' }
+      }
+
+      // Check if it's a system user token or has business access
+      const scopes = debugResult.data?.scopes || []
+      const hasBusinessAccess = scopes.includes('ads_read') && scopes.includes('ads_management') && scopes.includes('business_management')
+      
+      if (!hasBusinessAccess) {
+        return { valid: false, error: 'Token does not have required business permissions (ads_read, ads_management, business_management)' }
+      }
+
+      // Validate access to the required business account
+      const businessResponse = await fetch(`${META_BASE_URL}/${this.businessAccountId}?access_token=${this.accessToken}`)
+      
+      if (!businessResponse.ok) {
+        return { valid: false, error: 'No access to specified business account' }
+      }
+
+      const business = await businessResponse.json()
+      return { valid: true, business, user: debugResult.data }
     } catch (error) {
       return { valid: false, error: 'Failed to validate token' }
     }
@@ -28,23 +53,28 @@ export class MetaApiClient {
   async getAdAccounts(customUrl?: string): Promise<{ data: MetaApiResponse; error?: string }> {
     try {
       let url: string
+      const fields = 'name,currency,balance,account_status,timezone_name,amount_spent,spend_cap'
       
       if (customUrl) {
         // Use the provided pagination URL directly
         url = customUrl
       } else {
-        // Build the initial URL
-        const fields = 'name,currency,balance,account_status,timezone_name,amount_spent,spend_cap'
-        url = `${META_BASE_URL}/me/adaccounts?fields=${fields}&access_token=${this.accessToken}`
+        // Build the initial URL using business manager endpoint (required)
+        url = `${META_BASE_URL}/${this.businessAccountId}/owned_ad_accounts?fields=${fields}&access_token=${this.accessToken}`
       }
       
       const response = await fetch(url)
       
       if (!response.ok) {
+        const errorText = await response.text()
+        
         if (response.status === 401) {
           return { data: { data: [] }, error: 'Token expired or invalid' }
         }
-        return { data: { data: [] }, error: `API Error: ${response.status}` }
+        if (response.status === 403) {
+          return { data: { data: [] }, error: 'Insufficient permissions to access ad accounts' }
+        }
+        return { data: { data: [] }, error: `API Error: ${response.status} - ${errorText}` }
       }
 
       const result = await response.json()

@@ -6,10 +6,11 @@ import AccountCard from './AccountCard'
 
 interface DashboardProps {
   token: string
+  businessAccountId: string
   onLogout: () => void
 }
 
-export default function Dashboard({ token, onLogout }: DashboardProps) {
+export default function Dashboard({ token, businessAccountId, onLogout }: DashboardProps) {
   const [accounts, setAccounts] = useState<AdAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,8 +23,16 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     try {
       let apiUrl = '/api/accounts'
       
+      const params = new URLSearchParams()
       if (url) {
-        apiUrl += `?url=${encodeURIComponent(url)}`
+        params.append('url', url)
+      }
+      if (businessAccountId) {
+        params.append('businessAccountId', businessAccountId)
+      }
+      
+      if (params.toString()) {
+        apiUrl += `?${params.toString()}`
       }
       
       const response = await fetch(apiUrl, {
@@ -90,7 +99,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       setLoading(false)
     }
     loadAccounts()
-  }, [token])
+  }, [token, businessAccountId])
 
   if (loading) {
     return <LoadingSpinner />
